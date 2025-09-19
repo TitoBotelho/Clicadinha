@@ -1,19 +1,16 @@
-from __future__ import annotations
-
 import asyncio
 import sys
 from contextlib import suppress
 
-from aiohttp.client_ws import ClientWebSocketResponse
+from aiohttp import ClientWebSocketResponse
 from loguru import logger
-
-# pyre-fixme[21]
 from s2clientprotocol import sc2api_pb2 as sc_pb
 
 from sc2.data import Status
 
 
 class ProtocolError(Exception):
+
     @property
     def is_game_over_error(self) -> bool:
         return self.args[0] in [
@@ -27,18 +24,18 @@ class ConnectionAlreadyClosed(ProtocolError):
 
 
 class Protocol:
-    def __init__(self, ws: ClientWebSocketResponse) -> None:
+
+    def __init__(self, ws):
         """
         A class for communicating with an SCII application.
         :param ws: the websocket (type: aiohttp.ClientWebSocketResponse) used to communicate with a specific SCII app
         """
         assert ws
         self._ws: ClientWebSocketResponse = ws
-        # pyre-fixme[11]
-        self._status: Status | None = None
+        self._status: Status = None
 
     async def __request(self, request):
-        logger.debug(f"Sending request: {request!r}")
+        logger.debug(f"Sending request: {request !r}")
         try:
             await self._ws.send_bytes(request.SerializeToString())
         except TypeError as exc:
@@ -88,6 +85,6 @@ class Protocol:
         result = await self._execute(ping=sc_pb.RequestPing())
         return result
 
-    async def quit(self) -> None:
+    async def quit(self):
         with suppress(ConnectionAlreadyClosed, ConnectionResetError):
             await self._execute(quit=sc_pb.RequestQuit())

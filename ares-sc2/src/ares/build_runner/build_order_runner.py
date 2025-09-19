@@ -598,15 +598,10 @@ class BuildOrderRunner:
             and self.ai.can_afford(self.ai.worker_type)
             # check if current command requires an idle townhall
             and (
-                (
-                    self.build_order[self.build_step].command
-                    not in self.REQUIRES_TOWNHALL_COMMANDS
-                )
+                self.build_order[self.build_step].command
+                not in self.REQUIRES_TOWNHALL_COMMANDS
                 or self.ai.supply_used
                 < self.build_order[self.build_step].start_at_supply
-                or self.build_order[self.build_step].command
-                == AbilityId.UPGRADETOORBITAL_ORBITALCOMMAND
-                and self.ai.tech_requirement_progress(UnitID.ORBITALCOMMAND) < 0.95
             )
         ):
             self.ai.train(self.ai.worker_type)
@@ -787,7 +782,6 @@ class BuildOrderRunner:
                         self.build_order[self.build_step].command
                     ):
                         worker.build_gas(geyser)
-                        self.current_step_started = True
                     else:
                         worker.move(geyser.position)
                 # worker doesn't exist for some reason

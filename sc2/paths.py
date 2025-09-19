@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import os
 import platform
 import re
@@ -20,7 +18,7 @@ BASEDIR = {
     "WineLinux": "~/.wine/drive_c/Program Files (x86)/StarCraft II",
 }
 
-USERPATH: dict[str, str | None] = {
+USERPATH = {
     "Windows": "Documents\\StarCraft II\\ExecuteInfo.txt",
     "WSL1": "Documents/StarCraft II/ExecuteInfo.txt",
     "WSL2": "Documents/StarCraft II/ExecuteInfo.txt",
@@ -38,7 +36,7 @@ BINPATH = {
     "WineLinux": "SC2_x64.exe",
 }
 
-CWD: dict[str, str | None] = {
+CWD = {
     "Windows": "Support64",
     "WSL1": "Support64",
     "WSL2": "Support64",
@@ -69,20 +67,20 @@ def get_user_sc2_install():
     """Attempts to find a user's SC2 install if their OS has ExecuteInfo.txt"""
     if USERPATH[PF]:
         einfo = str(get_home() / Path(USERPATH[PF]))
-        if Path(einfo).is_file():
-            with Path(einfo).open() as f:
+        if os.path.isfile(einfo):
+            with open(einfo) as f:
                 content = f.read()
             if content:
                 base = re.search(r" = (.*)Versions", content).group(1)
                 if PF in {"WSL1", "WSL2"}:
                     base = str(wsl.win_path_to_wsl_path(base))
 
-                if Path(base).exists():
+                if os.path.exists(base):
                     return base
     return None
 
 
-def get_env() -> None:
+def get_env():
     # TODO: Linux env conf from: https://github.com/deepmind/pysc2/blob/master/pysc2/run_configs/platforms.py
     return None
 
@@ -134,30 +132,33 @@ def latest_executeble(versions_dir, base_build=None):
 class _MetaPaths(type):
     """ "Lazily loads paths to allow importing the library even if SC2 isn't installed."""
 
-    def __setup(cls):
+    # pylint: disable=C0203
+    def __setup(self):
         if PF not in BASEDIR:
             logger.critical(f"Unsupported platform '{PF}'")
             sys.exit(1)
 
         try:
             base = os.environ.get("SC2PATH") or get_user_sc2_install() or BASEDIR[PF]
-            cls.BASE = Path(base).expanduser()
-            cls.EXECUTABLE = latest_executeble(cls.BASE / "Versions")
-            cls.CWD = cls.BASE / CWD[PF] if CWD[PF] else None
+            self.BASE = Path(base).expanduser()
+            self.EXECUTABLE = latest_executeble(self.BASE / "Versions")
+            self.CWD = self.BASE / CWD[PF] if CWD[PF] else None
 
-            cls.REPLAYS = cls.BASE / "Replays"
+            self.REPLAYS = self.BASE / "Replays"
 
-            if (cls.BASE / "maps").exists():
-                cls.MAPS = cls.BASE / "maps"
+            if (self.BASE / "maps").exists():
+                self.MAPS = self.BASE / "maps"
             else:
-                cls.MAPS = cls.BASE / "Maps"
+                self.MAPS = self.BASE / "Maps"
         except FileNotFoundError as e:
             logger.critical(f"SC2 installation not found: File '{e.filename}' does not exist.")
             sys.exit(1)
 
-    def __getattr__(cls, attr):
-        cls.__setup()
-        return getattr(cls, attr)
+    # pylint: disable=C0203
+    def __getattr__(self, attr):
+        # pylint: disable=E1120
+        self.__setup()
+        return getattr(self, attr)
 
 
 class Paths(metaclass=_MetaPaths):

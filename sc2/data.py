@@ -1,17 +1,13 @@
-# pyre-ignore-all-errors[16, 19]
-"""For the list of enums, see here
+""" For the list of enums, see here
 
 https://github.com/Blizzard/s2client-api/blob/d9ba0a33d6ce9d233c2a4ee988360c188fbe9dbf/include/sc2api/sc2_gametypes.h
 https://github.com/Blizzard/s2client-api/blob/d9ba0a33d6ce9d233c2a4ee988360c188fbe9dbf/include/sc2api/sc2_action.h
 https://github.com/Blizzard/s2client-api/blob/d9ba0a33d6ce9d233c2a4ee988360c188fbe9dbf/include/sc2api/sc2_unit.h
 https://github.com/Blizzard/s2client-api/blob/d9ba0a33d6ce9d233c2a4ee988360c188fbe9dbf/include/sc2api/sc2_data.h
 """
-
-from __future__ import annotations
-
 import enum
+from typing import Dict, Set
 
-# pyre-ignore[21]
 from s2clientprotocol import common_pb2 as common_pb
 from s2clientprotocol import data_pb2 as data_pb
 from s2clientprotocol import error_pb2 as error_pb
@@ -43,14 +39,13 @@ Target = enum.Enum("Target", data_pb.AbilityData.Target.items())
 
 ActionResult = enum.Enum("ActionResult", error_pb.ActionResult.items())
 
-# pyre-ignore[11]
-race_worker: dict[Race, UnitTypeId] = {
+race_worker: Dict[Race, UnitTypeId] = {
     Race.Protoss: UnitTypeId.PROBE,
     Race.Terran: UnitTypeId.SCV,
     Race.Zerg: UnitTypeId.DRONE,
 }
 
-race_townhalls: dict[Race, set[UnitTypeId]] = {
+race_townhalls: Dict[Race, Set[UnitTypeId]] = {
     Race.Protoss: {UnitTypeId.NEXUS},
     Race.Terran: {
         UnitTypeId.COMMANDCENTER,
@@ -76,7 +71,7 @@ race_townhalls: dict[Race, set[UnitTypeId]] = {
     },
 }
 
-warpgate_abilities: dict[AbilityId, AbilityId] = {
+warpgate_abilities: Dict[AbilityId, AbilityId] = {
     AbilityId.GATEWAYTRAIN_ZEALOT: AbilityId.WARPGATETRAIN_ZEALOT,
     AbilityId.GATEWAYTRAIN_STALKER: AbilityId.WARPGATETRAIN_STALKER,
     AbilityId.GATEWAYTRAIN_HIGHTEMPLAR: AbilityId.WARPGATETRAIN_HIGHTEMPLAR,
@@ -85,7 +80,7 @@ warpgate_abilities: dict[AbilityId, AbilityId] = {
     AbilityId.TRAIN_ADEPT: AbilityId.TRAINWARP_ADEPT,
 }
 
-race_gas: dict[Race, UnitTypeId] = {
+race_gas: Dict[Race, UnitTypeId] = {
     Race.Protoss: UnitTypeId.ASSIMILATOR,
     Race.Terran: UnitTypeId.REFINERY,
     Race.Zerg: UnitTypeId.EXTRACTOR,

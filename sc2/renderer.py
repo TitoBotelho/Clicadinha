@@ -1,13 +1,13 @@
 import datetime
 
-# pyre-ignore[21]
 from s2clientprotocol import score_pb2 as score_pb
 
 from sc2.position import Point2
 
 
 class Renderer:
-    def __init__(self, client, map_size, minimap_size) -> None:
+
+    def __init__(self, client, map_size, minimap_size):
         self._client = client
 
         self._window = None
@@ -22,7 +22,7 @@ class Renderer:
         self._text_score = None
         self._text_time = None
 
-    async def render(self, observation) -> None:
+    async def render(self, observation):
         render_data = observation.observation.render_data
 
         map_size = render_data.map.size
@@ -37,16 +37,14 @@ class Renderer:
         minimap_pitch = -minimap_width * 3
 
         if not self._window:
+            # pylint: disable=C0415
             from pyglet.image import ImageData
             from pyglet.text import Label
             from pyglet.window import Window
 
             self._window = Window(width=map_width, height=map_height)
-            # pyre-fixme[16]
             self._window.on_mouse_press = self._on_mouse_press
-            # pyre-fixme[16]
             self._window.on_mouse_release = self._on_mouse_release
-            # pyre-fixme[16]
             self._window.on_mouse_drag = self._on_mouse_drag
             self._map_image = ImageData(
                 map_width, map_height, "RGB", map_data, map_pitch
@@ -117,6 +115,7 @@ class Renderer:
                 self._text_vespene.text = str(observation.observation.player_common.vespene)
                 self._text_minerals.text = str(observation.observation.player_common.minerals)
             if observation.observation.HasField("score"):
+                # pylint: disable=W0212
                 self._text_score.text = f"{score_pb._SCORE_SCORETYPE.values_by_number[observation.observation.score.score_type].name} score: {observation.observation.score.score}"
 
         await self._update_window()
@@ -132,7 +131,7 @@ class Renderer:
             )
             self._mouse_x, self._mouse_y = None, None
 
-    async def _update_window(self) -> None:
+    async def _update_window(self):
         self._window.switch_to()
         self._window.dispatch_events()
 
@@ -148,21 +147,21 @@ class Renderer:
 
         self._window.flip()
 
-    def _on_mouse_press(self, x, y, button, _modifiers) -> None:
+    def _on_mouse_press(self, x, y, button, _modifiers):
         if button != 1:  # 1: mouse.LEFT
             return
         if x > self._minimap_size[0] or y > self._minimap_size[1]:
             return
         self._mouse_x, self._mouse_y = x, y
 
-    def _on_mouse_release(self, x, y, button, _modifiers) -> None:
+    def _on_mouse_release(self, x, y, button, _modifiers):
         if button != 1:  # 1: mouse.LEFT
             return
         if x > self._minimap_size[0] or y > self._minimap_size[1]:
             return
         self._mouse_x, self._mouse_y = x, y
 
-    def _on_mouse_drag(self, x, y, _dx, _dy, buttons, _modifiers) -> None:
+    def _on_mouse_drag(self, x, y, _dx, _dy, buttons, _modifiers):
         if not buttons & 1:  # 1: mouse.LEFT
             return
         if x > self._minimap_size[0] or y > self._minimap_size[1]:

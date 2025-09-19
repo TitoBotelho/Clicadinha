@@ -1,29 +1,24 @@
 """Handle data."""
 import json
 import os
-from collections import defaultdict, deque
 from os import path
 from typing import Dict, List, Optional, Union
 
-from loguru import logger
 from sc2.data import Result
 
 from ares.consts import (
     BUILD_CHOICES,
-    BUILD_SELECTION,
     CYCLE,
     DATA_DIR,
     DEBUG,
     DURATION,
     LOSS,
-    MIN_GAMES_WINRATE_BASED,
     RACE,
     RESULT,
     STRATEGY_USED,
     TEST_OPPONENT_ID,
     USE_DATA,
     WIN,
-    WINRATE_BASED,
     ManagerName,
     ManagerRequestType,
 )
@@ -91,15 +86,13 @@ class DataManager(Manager, IManagerMediator):
         self.chosen_opening: str = ""
         self.build_cycle: list = self._get_build_cycle()
         self.found_build: bool = False
-        self.opponent_history: list = []
+        self.opponent_history: List = []
 
         self.file_path: path = path.join(
             DATA_DIR, f"{self.ai.opponent_id}-{self.ai.race.name.lower()}.json"
         )
-        self.build_selection_method: str = CYCLE
+
         self.data_saved: bool = False
-        # how many games to build data for winrate based selection
-        self.min_games: int = 3
 
     def manager_request(
         self,
@@ -132,13 +125,6 @@ class DataManager(Manager, IManagerMediator):
         return self.manager_requests_dict[request](kwargs)
 
     def initialise(self) -> None:
-
-        if BUILD_SELECTION in self.config and self.config[USE_DATA]:
-            if self.config[BUILD_SELECTION] == WINRATE_BASED:
-                self.build_selection_method = WINRATE_BASED
-        if MIN_GAMES_WINRATE_BASED in self.config:
-            self.min_games = self.config[MIN_GAMES_WINRATE_BASED]
-
         if BUILD_CHOICES in self.config:
             if self.config[USE_DATA]:
                 self._get_opponent_data(self.ai.opponent_id)
@@ -159,18 +145,13 @@ class DataManager(Manager, IManagerMediator):
         """
         pass
 
-    def _choose_opening_cycle(self):
+    def _choose_opening(self) -> None:
         """
-        Cycle fallback: choose the next build in the cycle after a defeat,
-        or repeat if win/unknown.
+        TODO: Develop a more sophisticated system rather then cycling on defeat
         """
-        logger.info("Using cycle logic for build selection")
-        if not self.opponent_history:
-            self.chosen_opening = self.build_cycle[0]
-            return
         last_build: str = self.opponent_history[-1][STRATEGY_USED]
         last_result: int = self.opponent_history[-1][RESULT]
-        self.found_build = False
+
         for i, build in enumerate(self.build_cycle):
             if last_build == build:
                 self.found_build = True
@@ -181,91 +162,9 @@ class DataManager(Manager, IManagerMediator):
                 else:
                     self.chosen_opening = build
                 break
-        # in case build from last game wasn't found in build cycle
+        # incase build from last game wasn't found in build cycle
         if not self.found_build:
             self.chosen_opening = self.build_cycle[0]
-
-        logger.info(f"Chosen opening: {self.chosen_opening}")
-
-    def _choose_opening(self) -> None:
-        """
-        Use winrate-based selection only after
-        all builds have at least self.min_games games.
-        Fallback: Use cycle method until then.
-        If there is a winrate tie (including all 0.0), cycle through tied builds.
-        """
-        # Count games per build
-        build_counts = {build: 0 for build in self.build_cycle}
-        for entry in self.opponent_history:
-            build = entry.get(STRATEGY_USED)
-            if build in build_counts:
-                build_counts[build] += 1
-
-        # not enough data yet, use simple cycle logic for build selection
-        if not all(count >= self.min_games for count in build_counts.values()):
-            self._choose_opening_cycle()
-            return
-
-        # --- Winrate-based selection ---
-        build_games = defaultdict(deque)  # build -> deque of last 10 results
-        for entry in reversed(self.opponent_history):
-            build = entry.get(STRATEGY_USED)
-            result = entry.get(RESULT)
-            if build in self.build_cycle:
-                dq = build_games[build]
-                if len(dq) < 10:
-                    dq.appendleft(result)
-                else:
-                    continue
-
-        winrates = {}
-        for build in self.build_cycle:
-            games = build_games.get(build, [])
-            if len(games) >= self.min_games:
-                wins = sum(1 for r in games if r == 2)
-                winrate: float = wins / len(games)
-                logger.info(f"Winrate for {build}: {winrate}")
-                winrates[build] = winrate
-
-            else:
-                # not enough data, shouldn't reach here
-                winrates[build] = -1
-
-        best_winrate = max([w for w in winrates.values() if w >= 0], default=-1)
-        tied_builds = [
-            b
-            for b in self.build_cycle
-            if winrates[b] == best_winrate and winrates[b] >= 0
-        ]
-
-        if len(tied_builds) == 1:
-            self.chosen_opening = tied_builds[0]
-            logger.info(f"Using {tied_builds[0]} with a winrate of {best_winrate}")
-            return
-
-        if len(tied_builds) > 1:
-            # Cycle through tied builds (including all 0.0 winrate)
-            last_build = (
-                self.opponent_history[-1][STRATEGY_USED]
-                if self.opponent_history
-                else None
-            )
-            if last_build in tied_builds:
-                idx = tied_builds.index(last_build)
-                chosen = tied_builds[(idx + 1) % len(tied_builds)]
-            else:
-                chosen = tied_builds[0]
-            self.chosen_opening = chosen
-            logger.info(
-                f"Cycling through tied builds: {tied_builds} all "
-                f"with a winrate of {best_winrate}, chose {chosen}. "
-                f"Previous build: {last_build}"
-            )
-            return
-
-        # Fallback again if no valid winrate (should not occur)
-        logger.info("All builds have invalid winrate, using cycle logic")
-        self._choose_opening_cycle()
 
     def _get_build_cycle(self) -> List[str]:
         if self.config[DEBUG]:

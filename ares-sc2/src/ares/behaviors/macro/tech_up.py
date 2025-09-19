@@ -87,14 +87,7 @@ class TechUp(MacroBehavior):
 
         # can we build this tech building right away?
         # 1.0 = Yes, < 1.0 = No
-        try:
-            tech_progress: float = ai.tech_requirement_progress(researched_from_id)
-        except AttributeError as e:
-            logger.warning(
-                f"{ai.time_formatted} Error checking tech progress for "
-                f"{researched_from_id}: {e}"
-            )
-            return False
+        tech_progress: float = ai.tech_requirement_progress(researched_from_id)
 
         # we have the tech ready to build this upgrade building right away :)
         if tech_progress == 1.0 and not ai.structure_present_or_pending(
@@ -138,16 +131,7 @@ class TechUp(MacroBehavior):
                     continue
 
                 # found something to build?
-                try:
-                    tech_ready = ai.tech_requirement_progress(structure_type) == 1.0
-                except AttributeError as e:
-                    logger.warning(
-                        f"{ai.time_formatted} Error checking tech progress "
-                        f"for {structure_type}: {e}"
-                    )
-                    continue
-
-                if tech_ready:
+                if ai.tech_requirement_progress(structure_type) == 1.0:
                     building: bool = BuildStructure(
                         self.base_location, structure_type
                     ).execute(ai, ai.config, ai.mediator)
@@ -203,9 +187,7 @@ class TechUp(MacroBehavior):
             for s in tech_required:
                 if ai.structure_present_or_pending(s):
                     continue
-                if ai.can_afford(s) and TechUp(s, base_location).execute(
-                    ai, ai.config, ai.mediator
-                ):
+                if TechUp(s, base_location).execute(ai, ai.config, ai.mediator):
                     logger.info(
                         f"{ai.time_formatted} Adding {s} so that we can "
                         f"tech towards {desired_tech}"
@@ -214,23 +196,16 @@ class TechUp(MacroBehavior):
             # no point continuing
             return False
 
-        if ai.can_afford(researched_from_id) and (
-            not structures_dict[researched_from_id] or ignore_existing_techlabs
-        ):
-            without_techlabs: list[Unit] = [
-                s
-                for s in _build_techlab_from_structures
-                if s.is_ready and s.is_idle and not s.has_add_on
-            ]
-            with_techlabs_idle: list[Unit] = [
-                s for s in _build_techlab_from_structures if s.is_idle and s.has_add_on
-            ]
-            if without_techlabs and not with_techlabs_idle:
-                without_techlabs[0].build(researched_from_id)
-                logger.info(
-                    f"{ai.time_formatted} Adding {researched_from_id} so that we can "
-                    f"tech towards {desired_tech}. "
-                    f"Ignore existing techlabs: {ignore_existing_techlabs}"
-                )
-                return True
+        without_techlabs: list[Unit] = [
+            s
+            for s in _build_techlab_from_structures
+            if s.is_ready and s.is_idle and not s.has_add_on
+        ]
+        if without_techlabs:
+            without_techlabs[0].build(researched_from_id)
+            logger.info(
+                f"{ai.time_formatted} Adding {researched_from_id} so that we can "
+                f"tech towards {desired_tech}"
+            )
+            return True
         return False
